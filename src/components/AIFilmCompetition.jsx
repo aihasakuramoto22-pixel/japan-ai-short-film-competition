@@ -602,14 +602,12 @@ export default function AIFilmCompetition() {
       {/* Footer */}
       <footer className="bg-gray-50 border-t border-gray-200 py-12 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <p className="text-gray-600 mb-2">
-            {lang === 'ja' ? 'お問い合わせ' : 'Contact'}
-          </p>
           <a
             href="mailto:japanaishortfilmcompetition@gmail.com"
-            className="text-black hover:text-gray-600 transition-colors font-medium text-lg"
+            className="inline-flex items-center gap-2 bg-black hover:bg-gray-800 text-white font-medium px-6 py-3 rounded-xl transition-all"
           >
-            japanaishortfilmcompetition@gmail.com
+            <Mail className="w-5 h-5" />
+            {lang === 'ja' ? 'お問い合わせ' : 'Contact Us'}
           </a>
           <p className="text-gray-400 text-sm mt-6">
             © 2025 Japan AI Short Film Competition. All rights reserved.
