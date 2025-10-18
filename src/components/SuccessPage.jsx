@@ -63,7 +63,7 @@ export default function SuccessPage() {
       <nav className="fixed top-0 w-full bg-white bg-opacity-80 backdrop-blur-xl z-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link to="/" className="text-xl font-semibold hover:text-gray-600 transition-colors">
-            JAPAN AI SHORT FILM COMPETITION
+            JAPANAISHORTFILMCOMPETITION
           </Link>
           <button
             onClick={() => setLang(lang === 'ja' ? 'en' : 'ja')}

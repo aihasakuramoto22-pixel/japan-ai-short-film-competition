@@ -328,7 +328,7 @@ export default function AIFilmCompetition() {
       <nav className="fixed top-0 w-full bg-white bg-opacity-80 backdrop-blur-xl z-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link to="/about" className="text-xl font-semibold hover:text-gray-600 transition-colors">
-            JAPAN AI FILM COMPETITION
+            JAPANAISHORTFILMCOMPETITION
           </Link>
           <div className="flex items-center gap-2">
             <select
