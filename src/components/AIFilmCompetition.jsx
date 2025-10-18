@@ -27,7 +27,7 @@ const translations = {
     filmTitle: '作品タイトル',
     videoFile: '動画ファイル',
     selectFile: 'ファイルを選択',
-    entryFee: '審査費: ¥2,000',
+    entryFee: '応募費: ¥2,000',
     entryFeeUSD: '約 ${usd}',
     agreeTerms: 'コンペティションの',
     terms: '利用規約',
@@ -90,7 +90,7 @@ const translations = {
     filmTitle: 'Film Title',
     videoFile: 'Video File',
     selectFile: 'Select File',
-    entryFee: 'Screening Fee: ¥2,000',
+    entryFee: 'Entry Fee: ¥2,000',
     entryFeeUSD: 'approx. ${usd}',
     agreeTerms: 'By submitting, you agree to the ',
     terms: 'Terms and Conditions',
@@ -328,7 +328,7 @@ export default function AIFilmCompetition() {
       <nav className="fixed top-0 w-full bg-white bg-opacity-80 backdrop-blur-xl z-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link to="/about" className="text-xl font-semibold hover:text-gray-600 transition-colors">
-            JAISFC
+            JAPAN AI FILM COMPETITION
           </Link>
           <div className="flex items-center gap-2">
             <select
