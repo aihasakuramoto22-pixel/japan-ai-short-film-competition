@@ -76,14 +76,6 @@ export default function AboutPage() {
     const userLang = navigator.language.toLowerCase();
     if (userLang.startsWith('ja')) {
       setLang('ja');
-    } else if (userLang.startsWith('zh')) {
-      setLang('zh');
-    } else if (userLang.startsWith('ko')) {
-      setLang('ko');
-    } else if (userLang.startsWith('es')) {
-      setLang('es');
-    } else if (userLang.startsWith('fr')) {
-      setLang('fr');
     } else {
       setLang('en');
     }
@@ -99,18 +91,12 @@ export default function AboutPage() {
           <Link to="/" className="text-xl font-semibold hover:text-gray-600 transition-colors">
             JAPAN AI SHORT FILM COMPETITION
           </Link>
-          <select
-            value={lang}
-            onChange={(e) => setLang(e.target.value)}
-            className="text-sm text-gray-600 hover:text-black bg-transparent border border-gray-300 rounded px-2 py-1 cursor-pointer transition-colors"
+          <button
+            onClick={() => setLang(lang === 'ja' ? 'en' : 'ja')}
+            className="text-sm text-gray-600 hover:text-black transition-colors font-medium"
           >
-            <option value="ja">日本語</option>
-            <option value="en">English</option>
-            <option value="zh">中文</option>
-            <option value="ko">한국어</option>
-            <option value="es">Español</option>
-            <option value="fr">Français</option>
-          </select>
+            {lang === 'ja' ? 'EN' : '日本語'}
+          </button>
         </div>
       </nav>
 

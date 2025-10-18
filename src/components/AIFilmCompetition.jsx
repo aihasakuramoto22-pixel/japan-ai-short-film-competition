@@ -330,16 +330,12 @@ export default function AIFilmCompetition() {
           <Link to="/about" className="text-xl font-semibold hover:text-gray-600 transition-colors">
             JAPAN AI SHORT FILM COMPETITION
           </Link>
-          <div className="flex items-center gap-2">
-            <select
-              value={lang}
-              onChange={(e) => setLang(e.target.value)}
-              className="text-sm text-gray-600 hover:text-black bg-transparent border border-gray-300 rounded px-2 py-1 cursor-pointer transition-colors"
-            >
-              <option value="ja">日本語</option>
-              <option value="en">English</option>
-            </select>
-          </div>
+          <button
+            onClick={() => setLang(lang === 'ja' ? 'en' : 'ja')}
+            className="text-sm text-gray-600 hover:text-black transition-colors font-medium"
+          >
+            {lang === 'ja' ? 'EN' : '日本語'}
+          </button>
         </div>
       </nav>
 
