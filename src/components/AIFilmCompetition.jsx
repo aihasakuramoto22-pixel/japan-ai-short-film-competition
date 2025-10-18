@@ -328,7 +328,7 @@ export default function AIFilmCompetition() {
       <nav className="fixed top-0 w-full bg-white bg-opacity-80 backdrop-blur-xl z-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link to="/about" className="text-xl font-semibold hover:text-gray-600 transition-colors">
-            JAPANAISHORTFILMCOMPETITION
+            JAPAN AI SHORT FILM COMPETITION
           </Link>
           <div className="flex items-center gap-2">
             <select
@@ -344,8 +344,15 @@ export default function AIFilmCompetition() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className="pt-32 pb-20 px-6 relative overflow-hidden">
+        {/* Animated colorful circles background */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+          <div className="absolute top-1/3 right-1/4 w-72 h-72 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+          <div className="absolute bottom-1/4 left-1/3 w-80 h-80 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+        </div>
+
+        <div className="max-w-4xl mx-auto text-center relative z-10">
           <h1 className="text-5xl md:text-7xl font-semibold tracking-tight mb-6 leading-tight whitespace-pre-line">
             {t.headline}
           </h1>
@@ -591,6 +598,24 @@ export default function AIFilmCompetition() {
           </div>
         </div>
       )}
+
+      {/* Footer */}
+      <footer className="bg-gray-50 border-t border-gray-200 py-12 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-gray-600 mb-2">
+            {lang === 'ja' ? 'お問い合わせ' : 'Contact'}
+          </p>
+          <a
+            href="mailto:japanaishortfilmcompetition@gmail.com"
+            className="text-black hover:text-gray-600 transition-colors font-medium text-lg"
+          >
+            japanaishortfilmcompetition@gmail.com
+          </a>
+          <p className="text-gray-400 text-sm mt-6">
+            © 2025 Japan AI Short Film Competition. All rights reserved.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
