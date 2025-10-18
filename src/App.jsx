@@ -6,6 +6,7 @@ import AIFilmCompetition from './components/AIFilmCompetition'
 const AboutPage = lazy(() => import('./components/AboutPage'))
 const SuccessPage = lazy(() => import('./components/SuccessPage'))
 const StripePaymentPage = lazy(() => import('./components/StripePaymentPage'))
+const ContactPage = lazy(() => import('./components/ContactPage'))
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -24,6 +25,7 @@ function App() {
         <Routes>
           <Route path="/" element={<AIFilmCompetition />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
           <Route path="/payment" element={<StripePaymentPage />} />
           <Route path="/success" element={<SuccessPage />} />
         </Routes>

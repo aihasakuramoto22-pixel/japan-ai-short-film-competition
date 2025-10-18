@@ -598,13 +598,13 @@ export default function AIFilmCompetition() {
       {/* Footer */}
       <footer className="bg-gray-50 border-t border-gray-200 py-12 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <a
-            href="mailto:japanaishortfilmcompetition@gmail.com"
+          <Link
+            to="/contact"
             className="inline-flex items-center gap-2 bg-black hover:bg-gray-800 text-white font-medium px-6 py-3 rounded-xl transition-all"
           >
             <Mail className="w-5 h-5" />
             {lang === 'ja' ? 'お問い合わせ' : 'Contact Us'}
-          </a>
+          </Link>
           <p className="text-gray-400 text-sm mt-6">
             © 2025 Japan AI Short Film Competition. All rights reserved.
           </p>

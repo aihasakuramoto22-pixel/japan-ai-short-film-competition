@@ -31,7 +31,7 @@ const translations = {
     req2: '長さは1分〜10分以内',
     req3: 'オリジナル作品であること',
     req4: '第三者の権利を侵害しないこと',
-    entryFee: '審査費: ¥2,000',
+    entryFee: '応募費: ¥2,000',
     applyNow: '今すぐ応募する',
     backToHome: 'ホームに戻る'
   },
@@ -63,7 +63,7 @@ const translations = {
     req2: 'Duration between 1-10 minutes',
     req3: 'Must be an original work',
     req4: 'Must not infringe on third-party rights',
-    entryFee: 'Screening Fee: ¥2,000',
+    entryFee: 'Entry Fee: ¥2,000',
     applyNow: 'Apply Now',
     backToHome: 'Back to Home'
   }
