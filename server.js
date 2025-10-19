@@ -9,17 +9,25 @@ import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import helmet from 'helmet';
 import mongoSanitize from 'express-mongo-sanitize';
-import { Storage } from 'megajs';
+import { v2 as cloudinary } from 'cloudinary';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import compression from 'compression';
+import streamBuffers from 'stream-buffers';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config();
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -89,24 +97,7 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// Configure MEGA.io API
-let megaStorage = null;
-async function initMegaStorage() {
-  try {
-    megaStorage = await new Storage({
-      email: process.env.MEGA_EMAIL,
-      password: process.env.MEGA_PASSWORD,
-      userAgent: 'JAPAN_AI_SHORT_FILM_COMPETITION/1.0'
-    }).ready;
-    console.log('MEGA.io storage initialized successfully');
-  } catch (error) {
-    console.error('Failed to initialize MEGA.io storage:', error);
-    throw error;
-  }
-}
-
-// Initialize MEGA storage on server start
-initMegaStorage().catch(console.error);
+// Cloudinary is already configured above - no additional initialization needed
 
 // Configure multer for temporary file storage
 const storage = multer.memoryStorage();
@@ -134,41 +125,33 @@ function isDeadlinePassed() {
   return new Date() > DEADLINE;
 }
 
-// MEGA.io storage management functions
-async function uploadToMega(fileBuffer, fileName, mimeType) {
+// Cloudinary storage management functions
+async function uploadToCloudinary(fileBuffer, fileName, mimeType) {
   try {
-    if (!megaStorage) {
-      throw new Error('MEGA storage not initialized');
-    }
+    // Convert buffer to base64
+    const b64 = Buffer.from(fileBuffer).toString('base64');
+    const dataURI = `data:${mimeType};base64,${b64}`;
 
-    // Get or create JAPAN_AI_SHORT_FILM_COMPETITION_Submissions folder
-    let folder = megaStorage.root.children.find(node => node.name === 'JAPAN_AI_SHORT_FILM_COMPETITION_Submissions');
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(dataURI, {
+      resource_type: 'video',
+      folder: 'JAPAN_AI_SHORT_FILM_COMPETITION_Submissions',
+      public_id: fileName.replace(/\.[^/.]+$/, ''), // Remove extension
+      overwrite: false,
+      invalidate: true
+    });
 
-    if (!folder) {
-      folder = await megaStorage.mkdir('JAPAN_AI_SHORT_FILM_COMPETITION_Submissions');
-      console.log('Created JAPAN_AI_SHORT_FILM_COMPETITION_Submissions folder');
-    }
-
-    // Upload file to MEGA
-    const uploadedFile = await megaStorage.upload({
-      name: fileName,
-      size: fileBuffer.length
-    }, fileBuffer, folder).complete;
-
-    console.log('File uploaded successfully:', uploadedFile.name);
-
-    // Generate public link
-    const link = await uploadedFile.link();
+    console.log('File uploaded successfully to Cloudinary:', result.public_id);
 
     return {
-      fileId: uploadedFile.nodeId,
-      fileName: uploadedFile.name,
-      viewLink: link,
-      downloadLink: link,
-      size: uploadedFile.size
+      fileId: result.public_id,
+      fileName: fileName,
+      viewLink: result.secure_url,
+      downloadLink: result.secure_url,
+      size: result.bytes
     };
   } catch (error) {
-    console.error('Error uploading to MEGA:', error);
+    console.error('Error uploading to Cloudinary:', error);
     throw new Error('UPLOAD_FAILED');
   }
 }
@@ -253,9 +236,9 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
     const submission = submissions.get(submissionId);
 
-    // Upload to MEGA.io
+    // Upload to Cloudinary
     const uniqueFileName = `${submissionId}_${Date.now()}_${req.file.originalname}`;
-    const cloudFile = await uploadToMega(
+    const cloudFile = await uploadToCloudinary(
       req.file.buffer,
       uniqueFileName,
       req.file.mimetype
@@ -378,7 +361,7 @@ async function sendConfirmationEmail(submission) {
           <p style="margin: 8px 0;"><strong>お名前:</strong> ${submission.name}</p>
           <p style="margin: 8px 0;"><strong>作品タイトル:</strong> ${submission.filmTitle}</p>
           <p style="margin: 8px 0;"><strong>応募ID:</strong> ${submission.id}</p>
-          <p style="margin: 8px 0;"><strong>動画リンク:</strong> <a href="${submission.cloudViewLink}" style="color: #0066cc;">MEGA.ioで表示</a></p>
+          <p style="margin: 8px 0;"><strong>動画リンク:</strong> <a href="${submission.cloudViewLink}" style="color: #0066cc;">動画を表示</a></p>
         </div>
         <p style="color: #666; margin-bottom: 16px;">受賞者発表は2025年12月12日を予定しております。</p>
 
@@ -411,7 +394,7 @@ async function sendConfirmationEmail(submission) {
           <p style="margin: 8px 0;"><strong>Name:</strong> ${submission.name}</p>
           <p style="margin: 8px 0;"><strong>Film Title:</strong> ${submission.filmTitle}</p>
           <p style="margin: 8px 0;"><strong>Submission ID:</strong> ${submission.id}</p>
-          <p style="margin: 8px 0;"><strong>Video Link:</strong> <a href="${submission.cloudViewLink}" style="color: #0066cc;">View on MEGA.io</a></p>
+          <p style="margin: 8px 0;"><strong>Video Link:</strong> <a href="${submission.cloudViewLink}" style="color: #0066cc;">View Video</a></p>
         </div>
         <p style="color: #666; margin-bottom: 16px;">Winners will be announced on December 12, 2025.</p>
 
@@ -451,12 +434,14 @@ async function sendConfirmationEmail(submission) {
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
+  const cloudinaryConfigured = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+
   res.json({
     status: 'ok',
     deadline: DEADLINE.toISOString(),
     deadlinePassed: isDeadlinePassed(),
-    cloudStorage: 'MEGA.io',
-    cloudStorageStatus: megaStorage ? 'connected' : 'disconnected',
+    cloudStorage: 'Cloudinary',
+    cloudStorageStatus: cloudinaryConfigured ? 'configured' : 'not configured',
     paymentMethods: ['Stripe (Credit Card, Apple Pay, Google Pay)']
   });
 });
@@ -474,6 +459,6 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Deadline: ${DEADLINE.toISOString()}`);
   console.log(`Deadline passed: ${isDeadlinePassed()}`);
-  console.log(`Cloud Storage: MEGA.io`);
+  console.log(`Cloud Storage: Cloudinary`);
   console.log(`Payment Methods: Stripe (Credit Card, Apple Pay, Google Pay)`);
 });

@@ -13,9 +13,11 @@ services:
         value: 3001
       - key: FRONTEND_URL
         sync: false
-      - key: MEGA_EMAIL
+      - key: CLOUDINARY_CLOUD_NAME
         sync: false
-      - key: MEGA_PASSWORD
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
         sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
