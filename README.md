@@ -1,6 +1,6 @@
 # Japan AI Short Film Competition
 
-**最新版 v2.0** - Stripe専用、MEGA.io対応、完全最適化版
+**最新版 v2.1** - Cloudflare R2対応、500MB動画アップロード可能
 
 AI技術を活用した短編映画コンペティションのWebアプリケーション
 
@@ -9,6 +9,7 @@ AI技術を活用した短編映画コンペティションのWebアプリケー
 ## 📚 ドキュメント一覧
 
 ### 🚀 セットアップ・デプロイ
+- **[CLOUDFLARE_R2_SETUP.md](./CLOUDFLARE_R2_SETUP.md)** - Cloudflare R2セットアップガイド（必須）
 - **[COMPLETE_SETUP_GUIDE.md](./COMPLETE_SETUP_GUIDE.md)** - 完全セットアップガイド（初心者向け60分コース）
 - **[LOCALHOST_TEST.md](./LOCALHOST_TEST.md)** - ローカル環境テスト（5分）
 - **[VALUEDOMAIN_SETUP.md](./VALUEDOMAIN_SETUP.md)** - ValueDomainドメイン接続（20分）
@@ -106,32 +107,25 @@ copy .env.example .env
 
 ### 3-3. 各サービスのキーを取得して設定
 
-#### 📦 MEGA.io（動画保存用）
+#### 📦 Cloudflare R2（動画保存用 - 500MB対応）
 
-1. [MEGA.io](https://mega.io/) でアカウントを作成（無料で20GBまで利用可能）
-2. アカウント登録時のメールアドレスとパスワードを使用
-3. `.env`に貼り付け：
-   ```
-   MEGA_EMAIL=あなたのMEGAメールアドレス
-   MEGA_PASSWORD=あなたのMEGAパスワード
-   ```
-4. **重要**: セキュリティのため、MEGA専用の強力なパスワードを設定してください
-5. サーバー起動時に自動的に`JAISFC_Submissions`フォルダが作成されます
+**無料で利用可能: 10GB/月のストレージ、無制限のダウンロード帯域**
 
-#### 💰 PayPal（支払い処理用）
+詳細なセットアップ手順は **[CLOUDFLARE_R2_SETUP.md](./CLOUDFLARE_R2_SETUP.md)** をご覧ください。
 
-1. [PayPal Developer](https://developer.paypal.com/) にログイン
-2. 「Dashboard」→「My Apps & Credentials」
-3. 「Sandbox」タブで「Create App」
-4. アプリ名を入力して作成
-5. 「Client ID」と「Secret」をコピー
-6. `.env`に貼り付け：
+簡単な手順:
+1. [Cloudflare](https://dash.cloudflare.com/)でアカウント作成
+2. R2バケットを作成（例: `japan-ai-film-competition`）
+3. API トークンを作成
+4. `.env`に以下を設定：
    ```
-   PAYPAL_CLIENT_ID=ここに貼り付け
-   PAYPAL_CLIENT_SECRET=ここに貼り付け
+   R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
+   R2_ACCESS_KEY_ID=your_access_key_id
+   R2_SECRET_ACCESS_KEY=your_secret_access_key
+   R2_BUCKET_NAME=japan-ai-film-competition
    ```
 
-#### 💳 Stripe（Apple Pay用）
+#### 💳 Stripe（決済処理用）
 
 1. [Stripe Dashboard](https://dashboard.stripe.com/register) でアカウント作成
 2. 「開発者」→「APIキー」
@@ -202,9 +196,9 @@ netstat -ano | findstr :3000
 taskkill /PID [プロセスID] /F
 ```
 
-### エラー: `MEGA_EMAIL is not defined` または `MEGA_PASSWORD is not defined`
-**原因**: 環境変数が設定されていない
-**解決**: ステップ3を再度確認し、`.env`ファイルにMEGAの認証情報を設定
+### エラー: `R2_ENDPOINT is not defined` または環境変数エラー
+**原因**: Cloudflare R2の環境変数が設定されていない
+**解決**: [CLOUDFLARE_R2_SETUP.md](./CLOUDFLARE_R2_SETUP.md) を参照し、`.env`ファイルにR2の認証情報を設定
 
 ### メールが送信されない
 **原因**: Gmailアプリパスワードが間違っている
@@ -224,7 +218,8 @@ taskkill /PID [プロセスID] /F
 
 ### バックエンド
 - Node.js + Express（サーバー）
-- MEGA.io SDK（動画保存 - 無料20GB、Dropboxの10倍）
+- Cloudflare R2（動画保存 - 無料10GB/月、無制限ダウンロード、500MB対応）
+- AWS SDK S3 Client（R2との通信用）
 - Stripe（クレジットカード、Apple Pay、Google Pay対応）
 - Nodemailer（Gmail経由メール送信）
 - Compression（Gzip圧縮で転送量50-70%削減）
@@ -267,12 +262,13 @@ jaisfc2/
 
 このプロジェクトは以下の変更を実装しています：
 
-1. ✅ **クラウドストレージ → MEGA.io**: 無料で20GBまで利用可能なMEGA.ioに変更（セットアップが簡単）
-2. ✅ **Apple Pay対応**: Stripeを統合してApple Payに対応
-3. ✅ **ページルーティング**: React Routerで説明ページと応募完了ページを追加
-4. ✅ **進捗表示**: アップロード進捗と残り予想時間をリアルタイム表示
-5. ✅ **メールテンプレート改善**: 自動送信の注意と問い合わせ先を追加
-6. ✅ **セキュリティ強化**: レート制限、入力検証、DDoS保護を実装
+1. ✅ **クラウドストレージ → Cloudflare R2**: 無料で10GB/月、無制限ダウンロード、500MB対応
+2. ✅ **500MBファイルアップロード対応**: 大容量動画のアップロードが可能
+3. ✅ **Apple Pay対応**: Stripeを統合してApple Payに対応
+4. ✅ **ページルーティング**: React Routerで説明ページと応募完了ページを追加
+5. ✅ **進捗表示**: アップロード進捗と残り予想時間をリアルタイム表示
+6. ✅ **メールテンプレート改善**: 自動送信の注意と問い合わせ先を追加
+7. ✅ **セキュリティ強化**: レート制限、入力検証、DDoS保護を実装
 
 ## APIエンドポイント
 
@@ -306,18 +302,20 @@ npm run build
 ## トラブルシューティング
 
 ### アップロードが失敗する
-- MEGA.ioのメールアドレスとパスワードが正しいか確認
-- MEGA.ioアカウントの容量が十分か確認（無料プランは20GB）
+- Cloudflare R2の環境変数が正しく設定されているか確認
+- R2バケットが作成されているか確認
+- APIトークンの権限が「Object Read & Write」になっているか確認
 - ファイルサイズが500MB以下か確認
-- サーバーログを確認して、MEGA.ioへの接続が成功しているか確認
+- サーバーログを確認して、R2への接続が成功しているか確認
+- 詳細は [CLOUDFLARE_R2_SETUP.md](./CLOUDFLARE_R2_SETUP.md) のトラブルシューティングセクションを参照
 
 ### メールが送信されない
 - Gmailアプリパスワードが正しいか確認
 - 2段階認証が有効になっているか確認
 
 ### 支払いが失敗する
-- PayPal/Stripeのキーが正しいか確認
-- サンドボックス環境の場合、テストアカウントを使用
+- Stripeのキーが正しいか確認
+- テスト環境の場合、テストカード番号を使用（4242 4242 4242 4242）
 
 ## 📧 お問い合わせ
 
@@ -364,6 +362,20 @@ npm run build
 ---
 
 ## 📈 改善履歴
+
+### v2.1（2025年10月19日）
+
+**主な変更**:
+- ✅ **Cloudflare R2への移行**: MEGA.io → Cloudflare R2
+- ✅ **500MBファイルアップロード対応**: 100MB → 500MB
+- ✅ **無制限ダウンロード**: Cloudflareのグローバルネットワークで高速配信
+- ✅ **無料プラン拡張**: 10GB/月のストレージ、無制限の帯域幅
+
+**移行理由**:
+- より大容量のファイルアップロード（500MB）
+- 無制限のダウンロード帯域
+- より信頼性の高いインフラ
+- Cloudflareのグローバルネットワークによる高速配信
 
 ### v2.0（2025年10月18日）
 

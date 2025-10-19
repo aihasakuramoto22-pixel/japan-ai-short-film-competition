@@ -9,7 +9,8 @@ import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import helmet from 'helmet';
 import mongoSanitize from 'express-mongo-sanitize';
-import { v2 as cloudinary } from 'cloudinary';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
@@ -22,11 +23,14 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
+// Configure Cloudflare R2 (S3-compatible)
+const r2Client = new S3Client({
+  region: 'auto',
+  endpoint: process.env.R2_ENDPOINT, // https://<account_id>.r2.cloudflarestorage.com
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+  },
 });
 
 const app = express();
@@ -97,14 +101,12 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// Cloudinary is already configured above - no additional initialization needed
-
 // Configure multer for temporary file storage
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 500 * 1024 * 1024 // 500MB
+    fileSize: 500 * 1024 * 1024 // 500MB limit
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('video/')) {
@@ -125,33 +127,39 @@ function isDeadlinePassed() {
   return new Date() > DEADLINE;
 }
 
-// Cloudinary storage management functions
-async function uploadToCloudinary(fileBuffer, fileName, mimeType) {
+// Cloudflare R2 storage management functions
+async function uploadToR2(fileBuffer, fileName, mimeType) {
   try {
-    // Convert buffer to base64
-    const b64 = Buffer.from(fileBuffer).toString('base64');
-    const dataURI = `data:${mimeType};base64,${b64}`;
+    const bucketName = process.env.R2_BUCKET_NAME || 'japan-ai-film-competition';
+    const key = `submissions/${fileName}`;
 
-    // Upload to Cloudinary
-    const result = await cloudinary.uploader.upload(dataURI, {
-      resource_type: 'video',
-      folder: 'JAPAN_AI_SHORT_FILM_COMPETITION_Submissions',
-      public_id: fileName.replace(/\.[^/.]+$/, ''), // Remove extension
-      overwrite: false,
-      invalidate: true
+    // Upload to R2
+    const putCommand = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+      Body: fileBuffer,
+      ContentType: mimeType,
     });
 
-    console.log('File uploaded successfully to Cloudinary:', result.public_id);
+    await r2Client.send(putCommand);
+    console.log('File uploaded successfully to R2:', key);
+
+    // Generate a presigned URL for viewing (valid for 365 days)
+    const getCommand = new GetObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    });
+    const viewLink = await getSignedUrl(r2Client, getCommand, { expiresIn: 365 * 24 * 60 * 60 });
 
     return {
-      fileId: result.public_id,
+      fileId: key,
       fileName: fileName,
-      viewLink: result.secure_url,
-      downloadLink: result.secure_url,
-      size: result.bytes
+      viewLink: viewLink,
+      downloadLink: viewLink,
+      size: fileBuffer.length
     };
   } catch (error) {
-    console.error('Error uploading to Cloudinary:', error);
+    console.error('Error uploading to R2:', error);
     throw new Error('UPLOAD_FAILED');
   }
 }
@@ -214,7 +222,7 @@ app.post('/api/submit/init', strictLimiter, [
   }
 });
 
-// Upload video file to INFINICLOUD
+// Upload video file to Cloudinary
 app.post('/api/upload', upload.single('file'), async (req, res) => {
   if (isDeadlinePassed()) {
     return res.status(403).json({
@@ -225,44 +233,57 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
   try {
     const { submissionId } = req.body;
+    console.log('Upload request received for submission:', submissionId);
 
     if (!submissionId || !submissions.has(submissionId)) {
+      console.error('Invalid submission ID:', submissionId);
       return res.status(400).json({ success: false, error: 'INVALID_SUBMISSION_ID' });
     }
 
     if (!req.file) {
+      console.error('No file uploaded');
       return res.status(400).json({ success: false, error: 'NO_FILE_UPLOADED' });
     }
 
+    console.log('File received:', {
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mimeType: req.file.mimetype
+    });
+
     const submission = submissions.get(submissionId);
 
-    // Upload to Cloudinary
+    // Upload to R2
     const uniqueFileName = `${submissionId}_${Date.now()}_${req.file.originalname}`;
-    const cloudFile = await uploadToCloudinary(
+    console.log('Uploading to R2:', uniqueFileName);
+
+    const r2File = await uploadToR2(
       req.file.buffer,
       uniqueFileName,
       req.file.mimetype
     );
 
-    submission.cloudFileId = cloudFile.fileId;
-    submission.cloudFileName = cloudFile.fileName;
-    submission.cloudViewLink = cloudFile.viewLink;
-    submission.cloudDownloadLink = cloudFile.downloadLink;
+    console.log('R2 upload successful:', r2File.fileId);
+
+    submission.r2FileId = r2File.fileId;
+    submission.r2FileName = r2File.fileName;
+    submission.r2ViewLink = r2File.viewLink;
+    submission.r2DownloadLink = r2File.downloadLink;
     submission.uploadedAt = new Date().toISOString();
 
     submissions.set(submissionId, submission);
 
     res.json({
       success: true,
-      fileId: cloudFile.fileId,
-      viewLink: cloudFile.viewLink
+      fileId: r2File.fileId,
+      viewLink: r2File.viewLink
     });
   } catch (error) {
     console.error('Upload error:', error);
     res.status(500).json({
       success: false,
       error: 'UPLOAD_FAILED',
-      message: 'Failed to upload to cloud storage'
+      message: error.message || 'Failed to upload to cloud storage'
     });
   }
 });
@@ -278,16 +299,21 @@ app.post('/api/create-payment-intent', async (req, res) => {
 
   try {
     const { submissionId, language, paymentMethod } = req.body;
+    console.log('Payment intent request for submission:', submissionId);
 
     if (!submissionId || !submissions.has(submissionId)) {
+      console.error('Invalid submission ID for payment:', submissionId);
       return res.status(400).json({ success: false, error: 'INVALID_SUBMISSION_ID' });
     }
 
     const submission = submissions.get(submissionId);
 
-    if (!submission.cloudFileId) {
+    if (!submission.r2FileId) {
+      console.error('File not uploaded for submission:', submissionId);
       return res.status(400).json({ success: false, error: 'FILE_NOT_UPLOADED' });
     }
+
+    console.log('Creating Stripe payment intent...');
 
     // Create Stripe Payment Intent
     const paymentIntent = await stripe.paymentIntents.create({
@@ -301,6 +327,8 @@ app.post('/api/create-payment-intent', async (req, res) => {
       }
     });
 
+    console.log('Stripe payment intent created:', paymentIntent.id);
+
     submission.stripePaymentIntentId = paymentIntent.id;
     submissions.set(submissionId, submission);
 
@@ -311,7 +339,11 @@ app.post('/api/create-payment-intent', async (req, res) => {
     });
   } catch (error) {
     console.error('Stripe payment intent creation error:', error);
-    res.status(500).json({ success: false, error: 'PAYMENT_CREATION_FAILED' });
+    res.status(500).json({
+      success: false,
+      error: 'PAYMENT_CREATION_FAILED',
+      message: error.message || 'Failed to create payment intent'
+    });
   }
 });
 
@@ -361,7 +393,7 @@ async function sendConfirmationEmail(submission) {
           <p style="margin: 8px 0;"><strong>お名前:</strong> ${submission.name}</p>
           <p style="margin: 8px 0;"><strong>作品タイトル:</strong> ${submission.filmTitle}</p>
           <p style="margin: 8px 0;"><strong>応募ID:</strong> ${submission.id}</p>
-          <p style="margin: 8px 0;"><strong>動画リンク:</strong> <a href="${submission.cloudViewLink}" style="color: #0066cc;">動画を表示</a></p>
+          <p style="margin: 8px 0;"><strong>動画リンク:</strong> <a href="${submission.r2ViewLink}" style="color: #0066cc;">動画を表示</a></p>
         </div>
         <p style="color: #666; margin-bottom: 16px;">受賞者発表は2025年12月12日を予定しております。</p>
 
@@ -394,7 +426,7 @@ async function sendConfirmationEmail(submission) {
           <p style="margin: 8px 0;"><strong>Name:</strong> ${submission.name}</p>
           <p style="margin: 8px 0;"><strong>Film Title:</strong> ${submission.filmTitle}</p>
           <p style="margin: 8px 0;"><strong>Submission ID:</strong> ${submission.id}</p>
-          <p style="margin: 8px 0;"><strong>Video Link:</strong> <a href="${submission.cloudViewLink}" style="color: #0066cc;">View Video</a></p>
+          <p style="margin: 8px 0;"><strong>Video Link:</strong> <a href="${submission.r2ViewLink}" style="color: #0066cc;">View Video</a></p>
         </div>
         <p style="color: #666; margin-bottom: 16px;">Winners will be announced on December 12, 2025.</p>
 
@@ -434,14 +466,15 @@ async function sendConfirmationEmail(submission) {
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
-  const cloudinaryConfigured = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+  const r2Configured = !!(process.env.R2_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET_NAME);
 
   res.json({
     status: 'ok',
     deadline: DEADLINE.toISOString(),
     deadlinePassed: isDeadlinePassed(),
-    cloudStorage: 'Cloudinary',
-    cloudStorageStatus: cloudinaryConfigured ? 'configured' : 'not configured',
+    cloudStorage: 'Cloudflare R2',
+    cloudStorageStatus: r2Configured ? 'configured' : 'not configured',
+    maxFileSize: '500MB',
     paymentMethods: ['Stripe (Credit Card, Apple Pay, Google Pay)']
   });
 });
@@ -459,6 +492,7 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Deadline: ${DEADLINE.toISOString()}`);
   console.log(`Deadline passed: ${isDeadlinePassed()}`);
-  console.log(`Cloud Storage: Cloudinary`);
+  console.log(`Cloud Storage: Cloudflare R2`);
+  console.log(`Max File Size: 500MB`);
   console.log(`Payment Methods: Stripe (Credit Card, Apple Pay, Google Pay)`);
 });

@@ -215,9 +215,11 @@ export default function AIFilmCompetition() {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Check file size (max 500MB)
-      if (file.size > 500 * 1024 * 1024) {
-        setErrorMessage('File size must be less than 500MB');
+      // Check file size (max 100MB - Cloudinary free tier limit)
+      if (file.size > 100 * 1024 * 1024) {
+        setErrorMessage(lang === 'ja'
+          ? 'ファイルサイズは100MB以下にしてください（Cloudinary無料プランの制限）'
+          : 'File size must be less than 100MB (Cloudinary free tier limit)');
         setShowError(true);
         return;
       }
@@ -296,15 +298,20 @@ export default function AIFilmCompetition() {
       setUploadStage('processing');
       setEstimatedTime(null);
 
+      console.log('Creating payment intent for submission:', initResult.submissionId);
+
       const paymentResponse = await axios.post(`${API_URL}/create-payment-intent`, {
         submissionId: initResult.submissionId,
         language: lang
       });
 
+      console.log('Payment intent response:', paymentResponse.data);
+
       const paymentResult = paymentResponse.data;
 
       if (!paymentResult.success) {
-        throw new Error('Payment creation failed');
+        console.error('Payment creation failed:', paymentResult);
+        throw new Error('Payment creation failed: ' + (paymentResult.message || paymentResult.error || 'Unknown error'));
       }
 
       setUploadProgress(90);
@@ -324,7 +331,19 @@ export default function AIFilmCompetition() {
 
     } catch (error) {
       console.error('Submission error:', error);
-      setErrorMessage(error.response?.data?.message || error.message || 'An error occurred');
+      console.error('Error response:', error.response);
+
+      let errorMsg = 'An error occurred';
+
+      if (error.response?.data?.message) {
+        errorMsg = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMsg = error.response.data.error;
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+
+      setErrorMessage(errorMsg);
       setShowError(true);
       setIsSubmitting(false);
       setUploadProgress(0);
