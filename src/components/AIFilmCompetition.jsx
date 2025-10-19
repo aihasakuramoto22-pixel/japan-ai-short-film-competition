@@ -159,18 +159,28 @@ export default function AIFilmCompetition() {
   const [usdAmount, setUsdAmount] = useState('');
 
   useEffect(() => {
-    const userLang = navigator.language.toLowerCase();
+    // Check if language is already stored in localStorage
+    const savedLang = localStorage.getItem('preferredLanguage');
 
-    // Detect language based on browser settings
-    if (userLang.startsWith('ja')) {
-      setLang('ja');
+    if (savedLang) {
+      setLang(savedLang);
     } else {
-      setLang('en'); // Default to English
+      // Detect language based on browser settings
+      const userLang = navigator.language.toLowerCase();
+      const detectedLang = userLang.startsWith('ja') ? 'ja' : 'en';
+      setLang(detectedLang);
+      localStorage.setItem('preferredLanguage', detectedLang);
     }
 
     // Fetch exchange rate
     fetchExchangeRate();
   }, []);
+
+  // Save language preference when changed
+  const handleLanguageChange = (newLang) => {
+    setLang(newLang);
+    localStorage.setItem('preferredLanguage', newLang);
+  };
 
   const fetchExchangeRate = async () => {
     try {
