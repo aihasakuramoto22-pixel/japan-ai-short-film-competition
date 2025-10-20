@@ -126,6 +126,7 @@ const DEADLINE = new Date('2025-11-30T23:59:59');
 function isDeadlinePassed() {
   return new Date() > DEADLINE;
 }
+// Emergency stop flagfunction isEmergencyStopped() {  return process.env.EMERGENCY_STOP === 'true';}// R2 Storage monitoringasync function checkR2StorageUsage() {  try {    const bucketName = process.env.R2_BUCKET_NAME || 'japan-ai-film-competition';    const command = new ListObjectsV2Command({      Bucket: bucketName,    });    const response = await r2Client.send(command);    const objects = response.Contents || [];    const totalBytes = objects.reduce((sum, obj) => sum + (obj.Size || 0), 0);    const totalGB = (totalBytes / (1024 * 1024 * 1024)).toFixed(2);    const usagePercent = (totalBytes / (10 * 1024 * 1024 * 1024)) * 100;    console.log(`R2 Storage Usage: ${totalGB} GB / 10 GB (${usagePercent.toFixed(1)}%)`);    if (usagePercent >= 90) {      console.error(`CRITICAL: R2 storage at ${usagePercent.toFixed(1)}% - Blocking new submissions`);      return { allowed: false, usage: totalGB, limit: 10, usagePercent: usagePercent.toFixed(1) };    } else if (usagePercent >= 80) {      console.warn(`WARNING: R2 storage at ${usagePercent.toFixed(1)}%`);      sendStorageWarningEmail(totalGB, usagePercent.toFixed(1)).catch(err =>        console.error('Failed to send warning email:', err)      );    }    return { allowed: true, usage: totalGB, limit: 10, usagePercent: usagePercent.toFixed(1) };  } catch (error) {    console.error('Failed to check R2 storage:', error);    return { allowed: true, usage: 0, limit: 10, usagePercent: 0 };  }}async function sendStorageWarningEmail(currentGB, usagePercent) {  const mailOptions = {    from: process.env.EMAIL_USER,    to: process.env.EMAIL_USER,    subject: 'R2ストレージ警告: 80%到達',    text: `R2ストレージ使用量が80%に到達しました。現在の使用量: ${currentGB} GB / 10 GB (${usagePercent}%)対策:1. 古い動画ファイルを削除2. 不要なファイルを削除3. ストレージをクリーンアップ90%到達時、新規応募を自動停止します。管理画面: https://dash.cloudflare.com/ → R2このメールは自動送信されています。Japan AI Short Film Competition 運営システム    `,  };  try {    await transporter.sendMail(mailOptions);    console.log('Storage warning email sent');  } catch (error) {    console.error('Failed to send warning email:', error);  }}
 
 // Cloudflare R2 storage management functions
 async function uploadToR2(fileBuffer, fileName, mimeType) {
@@ -173,6 +174,7 @@ app.post('/api/submit/init', strictLimiter, [
   body('fileSize').isNumeric().custom(value => value <= 500 * 1024 * 1024),
   body('fileName').trim().notEmpty()
 ], async (req, res) => {
+if (isEmergencyStopped()) {    return res.status(503).json({ success: false, error: 'SERVICE_UNAVAILABLE', message: '現在、応募受付を一時停止しています。' });  }  const storageCheck = await checkR2StorageUsage();  if (!storageCheck.allowed) {    return res.status(507).json({ success: false, error: 'STORAGE_FULL', message: 'ストレージ容量が不足しています。' });  }
   if (isDeadlinePassed()) {
     return res.status(403).json({
       success: false,
@@ -468,12 +470,21 @@ async function sendConfirmationEmail(submission) {
 app.get('/api/health', async (req, res) => {
   const r2Configured = !!(process.env.R2_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET_NAME);
 
+let storageInfo = { usage: 'unknown', usagePercent: 0, allowed: true };
+  if (r2Configured) {
+    storageInfo = await checkR2StorageUsage();
+  }
+
   res.json({
     status: 'ok',
     deadline: DEADLINE.toISOString(),
     deadlinePassed: isDeadlinePassed(),
+    emergencyStopped: isEmergencyStopped(),
     cloudStorage: 'Cloudflare R2',
     cloudStorageStatus: r2Configured ? 'configured' : 'not configured',
+    storageUsage: `${storageInfo.usage} GB / ${storageInfo.limit} GB`,
+    storagePercent: `${storageInfo.usagePercent}%`,
+    submissionsAllowed: !isDeadlinePassed() && !isEmergencyStopped() && storageInfo.allowed,
     maxFileSize: '500MB',
     paymentMethods: ['Stripe (Credit Card, Apple Pay, Google Pay)']
   });
