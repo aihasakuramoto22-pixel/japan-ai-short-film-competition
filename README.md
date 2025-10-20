@@ -4,16 +4,27 @@
 
 AI技術を活用した短編映画コンペティションのWebアプリケーション
 
+## 🌐 本番環境URL（完全無料構成）
+
+```
+フロントエンド: https://jaisfc.pages.dev (Cloudflare Pages)
+バックエンドAPI: https://japan-ai-backend.onrender.com (Render)
+動画ストレージ: Cloudflare R2 (10GB/月 無料)
+```
+
+**総費用: 0円/月（永久無料）**
+
 ---
 
 ## 📚 ドキュメント一覧
 
 ### 🚀 セットアップ・デプロイ
-- **[CLOUDFLARE_R2_SETUP.md](./CLOUDFLARE_R2_SETUP.md)** - Cloudflare R2セットアップガイド（必須）
-- **[COMPLETE_SETUP_GUIDE.md](./COMPLETE_SETUP_GUIDE.md)** - 完全セットアップガイド（初心者向け60分コース）
+- **[CLOUDFLARE_PAGES_SETUP.md](./CLOUDFLARE_PAGES_SETUP.md)** - **推奨** Cloudflare Pages完全無料デプロイ（15分）
+- **[RENDER_BACKEND_ENV_SETUP.md](./RENDER_BACKEND_ENV_SETUP.md)** - Renderバックエンド環境変数設定ガイド
+- **[CLOUDFLARE_R2_SETUP.md](./CLOUDFLARE_R2_SETUP.md)** - Cloudflare R2セットアップガイド（動画ストレージ）
+- **[COMPLETE_FREE_SETUP.md](./COMPLETE_FREE_SETUP.md)** - 完全無料構成ガイド（ドメイン代なし）
 - **[LOCALHOST_TEST.md](./LOCALHOST_TEST.md)** - ローカル環境テスト（5分）
-- **[VALUEDOMAIN_SETUP.md](./VALUEDOMAIN_SETUP.md)** - ValueDomainドメイン接続（20分）
-- **[PRODUCTION_DEPLOY.md](./PRODUCTION_DEPLOY.md)** - 本番環境デプロイ詳細
+- **[VALUEDOMAIN_SETUP.md](./VALUEDOMAIN_SETUP.md)** - ValueDomainドメイン接続（オプション）
 
 ### 📖 技術情報
 - **[ISSUES_AND_IMPROVEMENTS.md](./ISSUES_AND_IMPROVEMENTS.md)** - 問題点と改善レポート

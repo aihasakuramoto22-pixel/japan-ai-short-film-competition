@@ -215,11 +215,11 @@ export default function AIFilmCompetition() {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Check file size (max 100MB - Cloudinary free tier limit)
-      if (file.size > 100 * 1024 * 1024) {
+      // Check file size (max 500MB - Cloudflare R2)
+      if (file.size > 500 * 1024 * 1024) {
         setErrorMessage(lang === 'ja'
-          ? 'ファイルサイズは100MB以下にしてください（Cloudinary無料プランの制限）'
-          : 'File size must be less than 100MB (Cloudinary free tier limit)');
+          ? 'ファイルサイズは500MB以下にしてください'
+          : 'File size must be less than 500MB');
         setShowError(true);
         return;
       }

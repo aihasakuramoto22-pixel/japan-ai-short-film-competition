@@ -132,7 +132,7 @@ EMAIL_PASSWORD=あなたのGmailアプリパスワード
 
 ```
 VITE_API_URL=https://japan-ai-backend.onrender.com
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_51SJQj3Jwsbd7SooaAA345WssPqwwkfzsILMgUcmxKlWmNxI6YoC7du1ikFSC4kaSQ01DAgxyFtct8yN8xtpq9NyO00ikSWAgWR
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_YOUR_STRIPE_PUBLISHABLE_KEY
 ```
 
 ### 3-3. Rewrite Rulesを設定
