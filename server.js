@@ -236,7 +236,9 @@ async function uploadToR2(fileBuffer, fileName, mimeType) {
     };
   } catch (error) {
     console.error('Error uploading to R2:', error);
-    throw new Error('UPLOAD_FAILED');
+    console.error('R2 Error Code:', error.Code);
+    console.error('R2 Error Message:', error.message);
+    throw error;
   }
 }
 
@@ -376,10 +378,16 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     });
   } catch (error) {
     console.error('Upload error:', error);
+    console.error('Upload error details:', {
+      message: error.message,
+      code: error.Code,
+      stack: error.stack
+    });
     res.status(500).json({
       success: false,
       error: 'UPLOAD_FAILED',
-      message: error.message || 'Failed to upload to cloud storage'
+      message: error.message || 'Failed to upload to cloud storage',
+      code: error.Code
     });
   }
 });
@@ -560,6 +568,37 @@ async function sendConfirmationEmail(submission) {
   }
 }
 
+// R2 connection test endpoint
+app.get('/api/test-r2', async (req, res) => {
+  try {
+    const bucketName = process.env.R2_BUCKET_NAME || 'japan-ai-film-competition';
+    const command = new ListObjectsV2Command({
+      Bucket: bucketName,
+      MaxKeys: 1
+    });
+
+    const response = await r2Client.send(command);
+
+    res.json({
+      success: true,
+      message: 'R2 connection successful',
+      bucket: bucketName,
+      endpoint: process.env.R2_ENDPOINT,
+      hasAccessKey: !!process.env.R2_ACCESS_KEY_ID,
+      hasSecretKey: !!process.env.R2_SECRET_ACCESS_KEY,
+      objectCount: response.Contents ? response.Contents.length : 0
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'R2_CONNECTION_FAILED',
+      message: error.message,
+      code: error.Code,
+      details: error.toString()
+    });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
   const r2Configured = !!(process.env.R2_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET_NAME);
@@ -588,9 +627,12 @@ app.get('/api/health', async (req, res) => {
 // Error handling middleware
 app.use((error, req, res, next) => {
   console.error('Server error:', error);
+  console.error('Error stack:', error.stack);
   res.status(500).json({
     success: false,
-    error: 'INTERNAL_SERVER_ERROR'
+    error: 'INTERNAL_SERVER_ERROR',
+    message: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message,
+    details: process.env.NODE_ENV === 'production' ? undefined : error.stack
   });
 });
 
