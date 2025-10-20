@@ -344,6 +344,10 @@ export default function AIFilmCompetition() {
         errorMsg = lang === 'ja'
           ? '現在、応募受付を一時停止しています。しばらくしてからもう一度お試しください。'
           : 'Submissions are temporarily unavailable. Please try again later.';
+      } else if (error.response?.data?.error === 'RATE_LIMIT') {
+        errorMsg = lang === 'ja'
+          ? 'リクエストが多すぎます。しばらくしてからもう一度お試しください。'
+          : 'Too many requests. Please try again later.';
       } else if (error.response?.data?.message) {
         errorMsg = error.response.data.message;
       } else if (error.response?.data?.error) {
