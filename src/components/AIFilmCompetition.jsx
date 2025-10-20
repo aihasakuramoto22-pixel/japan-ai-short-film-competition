@@ -335,7 +335,20 @@ export default function AIFilmCompetition() {
 
       let errorMsg = 'An error occurred';
 
-      if (error.response?.data?.message) {
+      // Handle specific error codes
+      if (error.response?.data?.error === 'STORAGE_FULL') {
+        errorMsg = lang === 'ja'
+          ? 'ストレージ容量が不足しているため、現在応募を受け付けることができません。運営までお問い合わせください。'
+          : 'Storage capacity is full. Please contact the organizers.';
+      } else if (error.response?.data?.error === 'SERVICE_UNAVAILABLE') {
+        errorMsg = lang === 'ja'
+          ? '現在、応募受付を一時停止しています。しばらくしてからもう一度お試しください。'
+          : 'Submissions are temporarily unavailable. Please try again later.';
+      } else if (error.response?.data?.error === 'RATE_LIMIT') {
+        errorMsg = lang === 'ja'
+          ? 'リクエストが多すぎます。しばらくしてからもう一度お試しください。'
+          : 'Too many requests. Please try again later.';
+      } else if (error.response?.data?.message) {
         errorMsg = error.response.data.message;
       } else if (error.response?.data?.error) {
         errorMsg = error.response.data.error;
