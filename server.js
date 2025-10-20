@@ -101,8 +101,16 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// Configure multer for temporary file storage
-const storage = multer.memoryStorage();
+// Configure multer for temporary file storage (use disk storage to avoid memory issues)
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, '/tmp'); // Use /tmp directory on Render
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}_${file.originalname}`);
+  }
+});
+
 const upload = multer({
   storage: storage,
   limits: {
@@ -355,13 +363,24 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     const uniqueFileName = `${submissionId}_${Date.now()}_${req.file.originalname}`;
     console.log('Uploading to R2:', uniqueFileName);
 
+    // Read file from disk (not memory)
+    const fileBuffer = await fs.promises.readFile(req.file.path);
+
     const r2File = await uploadToR2(
-      req.file.buffer,
+      fileBuffer,
       uniqueFileName,
       req.file.mimetype
     );
 
     console.log('R2 upload successful:', r2File.fileId);
+
+    // Delete temporary file to free up disk space
+    try {
+      await fs.promises.unlink(req.file.path);
+      console.log('Temporary file deleted:', req.file.path);
+    } catch (unlinkError) {
+      console.error('Failed to delete temporary file:', unlinkError);
+    }
 
     submission.r2FileId = r2File.fileId;
     submission.r2FileName = r2File.fileName;
@@ -377,6 +396,16 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       viewLink: r2File.viewLink
     });
   } catch (error) {
+    // Clean up temporary file if it exists
+    if (req.file && req.file.path) {
+      try {
+        await fs.promises.unlink(req.file.path);
+        console.log('Temporary file deleted after error:', req.file.path);
+      } catch (unlinkError) {
+        console.error('Failed to delete temporary file after error:', unlinkError);
+      }
+    }
+
     console.error('Upload error:', error);
     console.error('Upload error details:', {
       message: error.message,
