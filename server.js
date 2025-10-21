@@ -25,7 +25,7 @@ dotenv.config();
 
 // Configure Cloudflare R2 (S3-compatible)
 const r2Client = new S3Client({
-  region: 'auto',
+  region: 'us-east-1', // Changed from 'auto' to fix signature version 4 errors
   endpoint: process.env.R2_ENDPOINT, // https://<account_id>.r2.cloudflarestorage.com
   credentials: {
     accessKeyId: process.env.R2_ACCESS_KEY_ID,
